@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      label { font-weight: bold; display: block; margin-top: 10px; }
+      select { width: 200px; margin-bottom: 10px; }
+    </style>
+  </head>
+  <body>
+    <h2>Filtro de Dados</h2>
+    <div id="filtrosContainer"></div>
+
+    <button onclick="aplicarFiltros()">Filtrar</button>
+
+    <h3>Tasks Encontradas:</h3>
+    <div id="resultadoTasks"></div>
+
+    <script>
+      function initFilters(filtros) {
+        const container = document.getElementById("filtrosContainer");
+        container.innerHTML = "";
+
+        if (!filtros || Object.keys(filtros).length === 0) {
+          container.innerHTML = "<p style='color:red;'>Erro ao carregar filtros. Verifique a planilha.</p>";
+          return;
+        }
+
+        Object.entries(filtros).forEach(([coluna, opcoes]) => {
+          const label = document.createElement("label");
+          label.textContent = coluna;
+
+          const select = document.createElement("select");
+          select.id = `filtro-${coluna}`;
+          select.className = "filtro";
+          select.innerHTML = `<option value="">(Todos)</option>` +
+            opcoes.map(v => `<option value="${v}">${v}</option>`).join("");
+
+          container.appendChild(label);
+          container.appendChild(select);
+        });
+      }
+
+      function aplicarFiltros() {
+        const filtros = {};
+        document.querySelectorAll(".filtro").forEach(select => {
+          const coluna = select.id.replace("filtro-", "");
+          const valor = select.value;
+          if (valor) filtros[coluna] = valor;
+        });
+
+        google.script.run.withSuccessHandler(resultados => {
+          const container = document.getElementById("resultadoTasks");
+          if (resultados.length === 0) {
+            container.innerHTML = "<p>Nenhuma task encontrada.</p>";
+          } else {
+            container.innerHTML = resultados.map(task => `<div>${task}</div>`).join("");
+          }
+        }).filtrarTasks(filtros);
+      }
+
+      window.onload = function () {
+        google.script.run
+          .withSuccessHandler(initFilters)
+          .withFailureHandler(function (err) {
+            console.error("Erro ao carregar filtros:", err);
+            document.getElementById("filtrosContainer").innerHTML = "<p style='color:red;'>Erro ao carregar filtros. Verifique a planilha.</p>";
+          })
+          .getFiltros();
+      };
+    </script>
+  </body>
+</html>
