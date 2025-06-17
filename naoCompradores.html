@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+
+      button {
+        margin-bottom: 20px;
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      #filtrosContainerNC {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-end;
+        margin-bottom: 20px;
+      }
+
+      .filtro-wrapper {
+        display: flex;
+        flex-direction: column;
+        min-width: 200px;
+        max-width: 250px;
+      }
+
+      table {
+        border-collapse: collapse;
+        margin-top: 10px;
+        width: 100%;
+      }
+
+      th, td {
+        border: 1px solid #ccc;
+        padding: 5px;
+        text-align: left;
+      }
+
+      .choices__inner {
+        background-color: #f0f8ff; /* cor de fundo */
+        color: #6666666; /* cor do texto */
+        border: 1px solid #007bff;
+        border-radius: 6px;
+        padding: 6px 12px;
+      }
+
+      .choices__list--dropdown {
+        background-color: #ffffff;
+        border: 1px solid #007bff;
+      }
+
+      .choices__item--selectable {
+        color: #000;
+      }
+
+      .choices {
+        min-width: 250px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .choices__inner {
+        min-width: 250px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      select {
+        min-width: 250px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+  <body>
+    <button onclick="voltarInicio()">Voltar à Página Inicial</button>
+
+    <h2>Visualização de Não Compradores</h2>
+    <div id="filtrosContainerNC"></div>
+    <div id="resultadoNC"></div>
+
+    <script>
+      function voltarInicio() {
+        google.script.run
+          .withSuccessHandler(function(html) {
+            document.open();
+            document.write(html);
+            document.close();
+          })
+          .getPage('index');
+      }
+
+      function initFiltrosNC(filtros) {
+        const container = document.getElementById("filtrosContainerNC");
+        container.innerHTML = "";
+
+        const ordemDesejada = ["Cod GV", "Cod Setor", "Cod PDV", "Nome Fantasia", "Comprador"];
+
+        ordemDesejada.forEach(coluna => {
+          const opcoes = filtros[coluna] || [];
+          if (!opcoes || opcoes.length === 0) return; // Oculta se não houver opções
+
+          const wrapper = document.createElement("div");
+          wrapper.className = "filtro-wrapper";
+
+          const label = document.createElement("label");
+          label.textContent = coluna;
+          label.setAttribute("for", `filtro-${coluna}`);
+
+          const select = document.createElement("select");
+          select.id = `filtro-${coluna}`;
+          select.innerHTML = `<option value="">(Todos)</option>` +
+            opcoes.map(op => `<option value="${op}">${op}</option>`).join("");
+
+          select.addEventListener("change", aplicarFiltroNC);
+
+          wrapper.appendChild(label);
+          wrapper.appendChild(select);
+          container.appendChild(wrapper);
+
+          new Choices(select, {
+            searchPlaceholderValue: 'Buscar...',
+            shouldSort: false,
+            itemSelectText: '',
+          });
+        });
+
+        aplicarFiltroNC(); // Aplica automaticamente ao carregar
+      }
+
+      function aplicarFiltroNC() {
+        const filtros = {};
+        document.querySelectorAll("select[id^='filtro-']").forEach(select => {
+          const campo = select.id.replace("filtro-", "");
+          const valor = select.value;
+          if (valor) filtros[campo] = valor;
+        });
+
+        google.script.run
+          .withSuccessHandler(mostrarResultadosNC)
+          .filtrarNaoCompradores(filtros);
+      }
+
+      function mostrarResultadosNC(dados) {
+        const div = document.getElementById("resultadoNC");
+        if (!dados || dados.length === 0) {
+          div.innerHTML = "<p>Nenhum resultado encontrado.</p>";
+          return;
+        }
+
+        const cabecalhos = ["Operação", "Cod GV", "Cod Setor", "Cod PDV", "Nome Fantasia", "Comprador"];
+
+        let html = "<table><tr>";
+        cabecalhos.forEach(cab => html += `<th>${cab}</th>`);
+        html += "</tr>";
+
+        dados.forEach(linha => {
+          html += "<tr>";
+          cabecalhos.forEach(cab => {
+            html += `<td>${linha[cab] || ""}</td>`;
+          });
+          html += "</tr>";
+        });
+
+        html += "</table>";
+        div.innerHTML = html;
+      }
+
+      window.onload = () => {
+        google.script.run
+          .withSuccessHandler(initFiltrosNC)
+          .getFiltrosNaoCompradores();
+      };
+    </script>
+  </body>
+</html>

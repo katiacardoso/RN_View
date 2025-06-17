@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+
+      button {
+        margin-bottom: 20px;
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      #filtrosContainer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-end;
+        margin-bottom: 20px;
+      }
+
+      .filtro-wrapper {
+        display: flex;
+        flex-direction: column;
+        min-width: 200px;
+        max-width: 250px;
+      }
+
+      ul {
+        list-style-type: disc;
+        padding-left: 20px;
+        font-size: 16px;
+      }
+
+      li {
+        margin-bottom: 6px;
+      }
+
+      .choices__inner {
+        background-color: #f0f8ff;
+        color: #6666666;
+        border: 1px solid #007bff;
+        border-radius: 6px;
+        padding: 6px 12px;
+      }
+
+      .choices__list--dropdown {
+        background-color: #ffffff;
+        border: 1px solid #007bff;
+      }
+
+      .choices__item--selectable {
+        color: #000;
+      }
+
+      .choices {
+        min-width: 250px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .choices__inner {
+        min-width: 250px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      select {
+        min-width: 250px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+    </style>
+  </head>
+  <body>
+    <button onclick="voltarInicio()">Voltar à Página Inicial</button>
+    <h2>Visualização de Tarefas</h2>
+
+    <div id="filtrosContainer"></div>
+    <div id="resultadoTarefas"></div>
+
+    <script>
+      function voltarInicio() {
+        google.script.run
+          .withSuccessHandler(function(html) {
+            document.open();
+            document.write(html);
+            document.close();
+          })
+          .getPage('index');
+      }
+
+      const ordemFiltros = [
+        "Visita", "PDV", "Nome Fantasia", "GV", "Setor",
+        "Cluster Primário", "Categoria", "Validada", "Pontos Totais"
+      ];
+
+      function initFiltrosTarefas(filtros) {
+        const container = document.getElementById("filtrosContainer");
+        container.innerHTML = "";
+
+        ordemFiltros.forEach(coluna => {
+          const opcoes = filtros[coluna];
+          if (!opcoes || opcoes.length === 0) return;
+
+          const wrapper = document.createElement("div");
+          wrapper.className = "filtro-wrapper";
+
+          const label = document.createElement("label");
+          label.textContent = coluna;
+          label.setAttribute("for", `filtro-${coluna}`);
+
+          const select = document.createElement("select");
+          select.id = `filtro-${coluna}`;
+          select.innerHTML = `<option value="">(Todos)</option>` + 
+            opcoes.map(op => `<option value="${op}">${op}</option>`).join("");
+
+          select.addEventListener("change", aplicarFiltroTarefas);
+
+          wrapper.appendChild(label);
+          wrapper.appendChild(select);
+          container.appendChild(wrapper);
+
+          new Choices(select, {
+            searchPlaceholderValue: 'Buscar...',
+            shouldSort: false,
+            itemSelectText: '',
+          });
+        });
+
+        aplicarFiltroTarefas();
+      }
+
+      function aplicarFiltroTarefas() {
+        const filtros = {};
+        document.querySelectorAll("select[id^='filtro-']").forEach(select => {
+          const campo = select.id.replace("filtro-", "");
+          const valor = select.value;
+          if (valor) filtros[campo] = valor;
+        });
+
+        google.script.run
+          .withSuccessHandler(mostrarResultadosTarefas)
+          .filtrarTasks(filtros);
+      }
+
+      function mostrarResultadosTarefas(tarefas) {
+        const div = document.getElementById("resultadoTarefas");
+        if (!tarefas || tarefas.length === 0) {
+          div.innerHTML = "<p>Nenhuma tarefa encontrada.</p>";
+          return;
+        }
+
+        let html = "<table border='1' cellspacing='0' cellpadding='5' style='border-collapse: collapse;'>";
+        html += "<tr><th>Tarefa</th></tr>";
+
+        tarefas.forEach(tarefa => {
+          html += `<tr><td>${tarefa}</td></tr>`;
+        });
+
+        html += "</table>";
+        div.innerHTML = html;
+      }
+
+
+
+
+      window.onload = () => {
+        google.script.run
+          .withSuccessHandler(initFiltrosTarefas)
+          .getFiltros();
+      };
+    </script>
+  </body>
+</html>
